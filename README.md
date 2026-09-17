@@ -136,6 +136,166 @@ python -m torch.distributed.launch --nproc_per_node=1 --master_port=48798 main_f
 Please contact 	**ykzhoua@gmail.com** or **yukun.zhou.19@ucl.ac.uk** if you have questions.
 
 
+## Running Code on colab
+
+This repository requires **Python 3.8.1**. You can run the code on Google Colab by creating a Conda environment with Python 3.8.1.
+
+### 1. Install `condacolab`
+
+Run the following code in a Colab cell:
+
+```bash
+!pip install -q condacolab
+```
+
+## 2. Import and Install Condacolab
+
+```python
+import condacolab
+condacolab.install()
+```
+## 3. Create the Environment
+
+```bash
+!conda create --name myenv python=3.8.1 -y
+```
+## 4. Activate the Environment
+
+Open a terminal and paste:
+
+```bash
+eval "$(conda shell.bash hook)"
+conda activate myenv
+```
+
+## 5. Clone This Repo
+
+
+```bash
+git clone https://github.com/openmedlab/RETFound_MAE.git
+pip install -r /content/RETFound_MAE/requirement.txt
+pip install -q matplotlib-inline ipython
+```
+
+## 6. Patch PyCM for Version Compatibility
+
+Run the following in Colab to patch a deprecated Matplotlib call:
+
+```python
+pycm_file = "/usr/local/envs/myenv/lib/python3.8/site-packages/pycm/pycm_obj.py"
+
+with open(pycm_file, "r") as f:
+    content = f.read()
+
+content = content.replace(
+    "fig.canvas.set_window_title(title)",
+    "fig.canvas.manager.set_window_title(title)"
+)
+
+with open(pycm_file, "w") as f:
+    f.write(content)
+
+print("PyCM patched.")
+```
+
+Verify the patch:
+
+```bash
+!grep -n "set_window_title" /usr/local/envs/myenv/lib/python3.8/site-packages/pycm/pycm_obj.py
+```
+
+## 7. Prepare Your Dataset
+
+Make sure images follow this folder structure:
+
+```
+main_folder/
+└── subfolder/
+    ├── class_1/
+    │   ├── image_1
+    │   ├── image_2
+    │   └── ...
+    └── class_2/
+        ├── image_1
+        ├── image_2
+        └── ...
+```
+
+## 8. Training
+
+Run in a Colab cell **or** in the terminal:
+
+```bash
+!/usr/local/envs/myenv/bin/python -m torch.distributed.launch --nproc_per_node=1 --master_port=48798 /content/RETFound_MAE/main_finetune.py \
+    --batch_size 16 \
+    --world_size 1 \
+    --model vit_large_patch16 \
+    --epochs 50 \
+    --blr 5e-3 --layer_decay 0.65 \
+    --weight_decay 0.05 --drop_path 0.2 \
+    --nb_classes 5 \
+    --data_path /content/SULYAP-Image-Classification-1 \
+    --task ./finetune_IDRiD/ \
+    --finetune /content/drive/MyDrive/RETFound_cfp_weights.pth
+```
+
+**Argument notes:**
+- `--finetune`: path to the pretrained model
+- `--data_path`: dataset path
+
+## 9. Testing
+
+```bash
+!/usr/local/envs/myenv/bin/python -m torch.distributed.launch --nproc_per_node=1 --master_port=48798 /content/RETFound_MAE/main_finetune.py \
+    --eval --batch_size 16 \
+    --world_size 1 \
+    --model vit_large_patch16 \
+    --epochs 50 \
+    --blr 5e-3 --layer_decay 0.65 \
+    --weight_decay 0.05 --drop_path 0.2 \
+    --nb_classes 5 \
+    --data_path /content/SULYAP-Image-Classification-1 \
+    --task ./internal_IDRiD/ \
+    --resume /content/drive/MyDrive/REFT/checkpoint-best.pth
+```
+
+## 10. Visualization, Testing, and Grad-CAM
+
+First, adjust package versions for compatibility:
+
+```bash
+pip uninstall numpy -y
+pip install numpy==1.19.5
+pip uninstall matplotlib -y
+pip install matplotlib==3.3.4
+```
+
+
+Then run the relevant script:
+
+| Purpose | Command |
+|---|---|
+| Visualize | `python visual.py` |
+| Test each image and generate results | `python test_predict.py` |
+| Grad-CAM for a batch of images | `python gradcampred.py` |
+| Grad-CAM for a single image | `python gradcamtest.py` |
+
+Make sure images follow the same folder structure as described in [step 7](#7-prepare-your-dataset):
+
+```
+main_folder/
+└── subfolder/
+    ├── class_1/
+    │   ├── image_1
+    │   ├── image_2
+    │   └── ...
+    └── class_2/
+        ├── image_1
+        ├── image_2
+        └── ...
+```
+
+
 ## 🛡️ License
 
 This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for details.
